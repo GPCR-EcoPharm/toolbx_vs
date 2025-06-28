@@ -248,7 +248,7 @@ def runScript(icm, script):
 
     # Execute
     try:
-        check_output(icm + " -s " + script, stderr=STDOUT, shell=True)
+        check_output('sudo' + icm + " -g -s " + script, stderr=STDOUT, shell=True)
     except CalledProcessError as e:
         print(e.output)
         sys.exit()
