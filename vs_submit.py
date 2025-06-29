@@ -21,13 +21,13 @@ def main():
     """
 
     # Return the queuing system chosen
-    vsDir, queue = parsing()
+    vsDir, subDir, queue = parsing()
 
     # Get the current working directory
     cwd = os.getcwd()
 
     # Store all queueing scripts to be submitted in this directory
-    queuePaths = getQueueScripts(vsDir, queue)
+    queuePaths = getQueueScripts(vsDir, subDir, queue)
 
     # Ask for confirmation to submit run
     confirmSubmit(queuePaths)
@@ -50,18 +50,20 @@ def parsing():
 
     parser = argparse.ArgumentParser(description=descr)
     parser.add_argument("vsDir", help=descr_vsDir)
+    parser.add_argument("subDir", help='Subdir to run e.g. 1')
     parser.add_argument("queue", help=descr_queue)
 
     args = parser.parse_args()
 
     vsDir = args.vsDir
+    subDir = args.subDir
     queue = args.queue
 
     if queue not in ("sge", "slurm"):
         print("Only 'sge' and 'slurm' are accepted queuing system options")
         sys.exit()
 
-    return vsDir, queue
+    return vsDir, subDir, queue
 
 
 def confirmSubmit(queuePaths):
@@ -73,6 +75,7 @@ def confirmSubmit(queuePaths):
     print("\nYou are about to submit " + str(len(queuePaths)) + " jobs.")
 
     answer = input("Do you want to proceed? (yes/no) ")
+    print (answer)
 
     if answer == "yes":
         print("\nSubmitting jobs...\n")
@@ -81,23 +84,23 @@ def confirmSubmit(queuePaths):
         sys.exit()
 
 
-def getQueueScripts(vsDir, queue):
+def getQueueScripts(vsDir, subDir, queue):
     """
     Make a list of the scripts to be submited
     """
 
     queuePaths = []
     # Listing direct subdirectories to the dir where this was executed
-    for subDir in os.listdir(vsDir):
-        if subDir.isdigit():
-            path = os.path.join(vsDir, subDir)
-            files = os.listdir(path)
+    #for subDir in os.listdir(vsDir):
+    #    if subDir.isdigit():
+    path = os.path.join(vsDir, subDir)
+    files = os.listdir(path)
 
-            # For each of these, save every file that ends with .slurm or
-            # .sge in a list, by saving its full path
-            for file in files:
-                if file.endswith("." + queue):
-                    queuePaths.append(os.path.join(path, file))
+    # For each of these, save every file that ends with .slurm or
+    # .sge in a list, by saving its full path
+    for file in files:
+        if file.endswith("." + queue):
+            queuePaths.append(os.path.join(path, file))
 
     return queuePaths
 
