@@ -123,7 +123,7 @@ def collectScoreData(vsDir, ligDict):
         ligDockedNum = 0
         for line in lines:
             # We take only the lines that contain "SCORE>"
-            if "SCORES>" in line:
+            if "SCORES>" in line and "zeroSCORES>" not in line:
                 ligDockedNum += 1
                 ligDict = parseScoreLine(ligDict, line, repeatNum)
 
