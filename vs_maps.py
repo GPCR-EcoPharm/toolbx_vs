@@ -50,7 +50,7 @@ def main():
     elif dbType == "2Drac":
         modifyDtb("s_dbType", "mol 2D", obPath)
         modifyDtb("l_sampleRacemic", "  yes", obPath)
-	modifyDtb("r_thTautomer", " 1.", obPath)
+        modifyDtb("r_thTautomer", " 1.", obPath)
 
 
 def parseArgs():
@@ -248,7 +248,8 @@ def runScript(icm, script):
 
     # Execute
     try:
-        check_output('sudo' + icm + " -g -s " + script, stderr=STDOUT, shell=True)
+        #check_output('sudo' + icm + " -g -s " + script, stderr=STDOUT, shell=True)
+        check_output(icm + " -g -s " + script, stderr=STDOUT, shell=True)
     except CalledProcessError as e:
         print(e.output)
         sys.exit()

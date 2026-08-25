@@ -115,8 +115,8 @@ def parsing():
     dtbFileName = glob.glob(setupDir + "/*.dtb")[0]
     projName = dtbFileName.replace(".dtb", "").split("/")[1]
 
-    if queue not in ("sge", "slurm", "slurm-srun"):
-        print("'sge', 'slurm' and 'slurm-srun' are the queuing system options")
+    if queue not in ("bash", "sge", "slurm", "slurm-srun"):
+        print("'bash', 'sge', 'slurm' and 'slurm-srun' are the queuing system options")
         sys.exit()
 
     return libStart, libEnd, sliceSize, repeatNum, thor, walltime, setupDir, \
@@ -286,7 +286,12 @@ def createSlices(libStart, libEnd, sliceSize, walltime, thor, projName,
 
             # Create a slice, check for submission system, run the appropriate
             # command
-            if queue == "slurm-srun":
+            if queue == "bash":
+                reportLines = bashSlice(sliceName, projName, thor,
+                                         lowerLimit, upperLimit, repeatDir,
+                                         reportLines, icmHome)
+
+            elif queue == "slurm-srun":
                 reportLines = slurmSrunSlice(sliceCount, projName, thor,
                                              lowerLimit, upperLimit,
                                              libStart, libEnd,
@@ -305,6 +310,53 @@ def createSlices(libStart, libEnd, sliceSize, walltime, thor, projName,
             upperLimit += sliceSize
             sliceCount += 1
 
+        # Add RUN_ALL.sh script for bash
+        if queue == "bash":
+            content = """
+#!/bin/bash
+
+MAX_JOBS=${1:-10}
+
+if ! [[ "$MAX_JOBS" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: MAX_JOBS must be a positive integer"
+    exit 1
+fi
+
+echo "Maximum concurrent jobs: $MAX_JOBS"
+
+for script in *.sh; do
+    [ -e "$script" ] || continue
+
+    # Don't run RUN_ALL.sh itself
+    [ "$script" = "RUN_ALL.sh" ] && continue
+
+    while [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; do
+        sleep 2
+    done
+
+    echo "$(date '+%Y-%m-%d %H:%M:%S') Starting $script"
+
+    (
+        bash "$script"
+        status=$?
+
+        if [ $status -eq 0 ]; then
+            echo "$(date '+%Y-%m-%d %H:%M:%S') Finished $script"
+        else
+            echo "$(date '+%Y-%m-%d %H:%M:%S') FAILED $script (exit code $status)"
+        fi
+    ) &
+
+done
+
+wait
+
+echo "$(date '+%Y-%m-%d %H:%M:%S') All jobs completed."
+"""
+
+            with open(repeatDir + "RUN_ALL.sh", "w") as f:
+                f.write(content)
+
         # Update the repeat number
         repeat += 1
 
@@ -312,6 +364,34 @@ def createSlices(libStart, libEnd, sliceSize, walltime, thor, projName,
         if queue == "slurm-srun":
             slurmSrun(projName, libStart, libEnd, walltime,
                       repeatDir, repeat, sliceCount - 1)
+
+    return reportLines
+
+
+def bashSlice(sliceName, projName, thor, lowerLimit, upperLimit,
+               repeatDir, reportLines, icmHome):
+    """
+    Create a slurm slice and write to a file with the info provided
+    """
+
+    lines = []
+    lines.append("#!/bin/sh")
+    lines.append("")
+    lines.append("ICMHOME=" + icmHome)
+    lines.append("$ICMHOME/icm64 -vlscluster $ICMHOME/_dockScan " + projName +
+                 " thorough=" + thor +
+                 " from=" + str(lowerLimit) +
+                 " to=" + str(upperLimit) +
+                 " > " + projName + "_" + str(upperLimit) + ".out 2>&1\n")
+
+    # WRITE SLURM LINES TO FILE
+    with open(repeatDir + sliceName + ".sh", "w") as f:
+        f.write('\n'.join(lines))
+
+    # Update report
+    reportLines.append("\tproject: " + projName +
+                       ", repeat:" + os.path.relpath(repeatDir) +
+                       ", slice:" + sliceName)
 
     return reportLines
 
