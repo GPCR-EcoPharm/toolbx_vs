@@ -382,7 +382,7 @@ def bashSlice(sliceName, projName, thor, lowerLimit, upperLimit,
                  " thorough=" + thor +
                  " from=" + str(lowerLimit) +
                  " to=" + str(upperLimit) +
-                 " > " + projName + "_" + str(upperLimit) + ".out 2>&1\n")
+                 " > " + projName + "_" + str(upperLimit) + ".ou 2>&1\n")
 
     # WRITE SLURM LINES TO FILE
     with open(repeatDir + sliceName + ".sh", "w") as f:
